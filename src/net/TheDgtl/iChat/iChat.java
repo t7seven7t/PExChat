@@ -58,6 +58,7 @@ public class iChat extends JavaPlugin {
 	public String chatColor = "&f";
 	public List<String> censorWords = new ArrayList<String>();
 	public String chatFormat = "[+prefix+group+suffix&f] +name: +message";
+    public String multigroupFormat = "[+prefix+group+suffix&f]";
 	public String meFormat = "* +name +message";
 	public String dateFormat = "HH:mm:ss";
 	
@@ -107,6 +108,7 @@ public class iChat extends JavaPlugin {
 		chatColor = config.getString("censor-string-color", chatColor);
 		censorWords = config.getStringList("censor-list", censorWords);
 		chatFormat = config.getString("message-format", chatFormat);
+        multigroupFormat = config.getString("multigroup-format", multigroupFormat);
 		dateFormat = config.getString("date-format", dateFormat);
 		meFormat = config.getString("me-format", meFormat);
 	}
@@ -118,6 +120,7 @@ public class iChat extends JavaPlugin {
 		config.setProperty("censor-string-color", chatColor);
 		config.setProperty("censor-list", censorWords);
 		config.setProperty("message-format", chatFormat);
+        config.setProperty("multigroup-format", multigroupFormat);
 		config.setProperty("date-format", dateFormat);
 		config.setProperty("me-format", meFormat);
 		config.save();
