@@ -23,6 +23,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -123,6 +124,9 @@ public class iChat extends JavaPlugin {
         config.setProperty("multigroup-format", multigroupFormat);
 		config.setProperty("date-format", dateFormat);
 		config.setProperty("me-format", meFormat);
+        HashMap<String, String> aliases = new HashMap<String, String>();
+        aliases.add("Admin", "A");
+        config.setProperty("aliases", aliases);
 		config.save();
 	}
 	
@@ -243,6 +247,7 @@ public class iChat extends JavaPlugin {
 		// Censor message
 		msg = censor(p, msg);
 		
+        msg = parseGroups(p, msg, this.multigroupFormat);
 		String format = parseVars(chatFormat, p);
 		if (format == null) return msg;
 		// Order is important, this allows us to use all variables in the suffix and prefix! But no variables in the message
@@ -259,6 +264,16 @@ public class iChat extends JavaPlugin {
 	public String parseChat(Player p, String msg) {
 		return parseChat(p, msg, this.chatFormat);
 	}
+    
+    /**
+     * @param p - Player object for chatting
+     * @param msg - Message to be formatted
+	 * @param multigroupsFormat - The requested chat format string
+	 * @return - New message format
+     */
+    public String parseGroups(Player p, String msg, String multigroupFormat){
+        String[] groups = permissions.getHandler().getGroups(p.getWorld().getName(), p.getName());
+    }
 	
 	/*
 	 * Return a health bar string.
