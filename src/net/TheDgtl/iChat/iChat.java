@@ -42,6 +42,14 @@ import org.bukkit.util.config.Configuration;
 import com.nijikokun.bukkit.Permissions.Permissions;
 
 public class iChat extends JavaPlugin {
+    
+	//For storing tracks and their contained groups and priority
+	public final class Track {
+		public String name = "";
+		public Integer priority = 0;
+		public List<String> groups = new ArrayList<String>();		
+	}
+	
 	public Permissions permissions = null;
 	
 	private playerListener pListener = new playerListener(this);
@@ -62,6 +70,8 @@ public class iChat extends JavaPlugin {
     public String multigroupFormat = "[+prefix+group+suffix&f]";
 	public String meFormat = "* +name +message";
 	public String dateFormat = "HH:mm:ss";
+	public List<Track> tracks = new ArrayList<Track>();
+	public HashMap<String, String> aliases = new HashMap<String, String>();
 	
 	// External interface
 	public static iChat ichat = null;
@@ -112,6 +122,26 @@ public class iChat extends JavaPlugin {
         multigroupFormat = config.getString("multigroup-format", multigroupFormat);
 		dateFormat = config.getString("date-format", dateFormat);
 		meFormat = config.getString("me-format", meFormat);
+		List<String> tracknames = new ArrayList<String>();
+		tracknames = config.getKeys("tracks");
+		for (String track : tracknames){
+			this.console.sendMessage(track);
+			Track loadtrack = new Track();
+			loadtrack.groups = config.getStringList("tracks."+track+".groups", loadtrack.groups);
+			for (String group : loadtrack.groups){
+				console.sendMessage(group);
+			}
+			loadtrack.priority = config.getInt("tracks."+track+".priority", 0);
+			this.console.sendMessage(loadtrack.priority.toString());
+			loadtrack.name = track;
+			tracks.add(loadtrack);
+		}
+		List<String> tmpaliases = new ArrayList<String>();
+		tmpaliases = config.getKeys("aliases");
+		for (String alias : tmpaliases){
+			aliases.put(alias, config.getString("aliases."+alias));
+		}
+		
 	}
 	
 	private void defaultConfig() {
@@ -125,7 +155,13 @@ public class iChat extends JavaPlugin {
 		config.setProperty("date-format", dateFormat);
 		config.setProperty("me-format", meFormat);
         HashMap<String, String> aliases = new HashMap<String, String>();
-        aliases.add("Admin", "A");
+        aliases.put("Admin", "A");
+        List<String> track = new ArrayList<String>();
+        track.add("Admin");
+        track.add("Moderator");
+        track.add("Builder");
+        config.setProperty("tracks.default.groups", track);
+        config.setProperty("tracks.default.priority", 1);
         config.setProperty("aliases", aliases);
 		config.save();
 	}
@@ -165,7 +201,7 @@ public class iChat extends JavaPlugin {
 		return sb.toString();
 	}
 	
-	/*
+	/*path
 	 * Parse a given text string and replace the variables/color codes.
 	 */
 	public String replaceVars(String format, String[] search, String[] replace) {
@@ -247,12 +283,17 @@ public class iChat extends JavaPlugin {
 		// Censor message
 		msg = censor(p, msg);
 		
-        msg = parseGroups(p, msg, this.multigroupFormat);
 		String format = parseVars(chatFormat, p);
+		
+		String groups = "";
+		if (format.contains("+groups")) {
+			groups = parseGroups(p, multigroupFormat);
+		}
+		
 		if (format == null) return msg;
 		// Order is important, this allows us to use all variables in the suffix and prefix! But no variables in the message
-		String[] search = new String[] {"+suffix,+s", "+prefix,+p", "+group,+g", "+healthbar,+hb", "+health,+h", "+world,+w", "+time,+t", "+name,+n", "+displayname,+d", "+message,+m"};
-		String[] replace = new String[] { suffix, prefix, group, healthbar, health, world, time, p.getName(), p.getDisplayName(), msg };
+		String[] search = new String[] {"+suffix,+s", "+prefix,+p", "+groups,+gs", "+group,+g", "+healthbar,+hb", "+health,+h", "+world,+w", "+time,+t", "+name,+n", "+displayname,+d", "+message,+m"};
+		String[] replace = new String[] { suffix, prefix, groups, group, healthbar, health, world, time, p.getName(), p.getDisplayName(), msg };
 		return replaceVars(format, search, replace);
 	}
 	
@@ -269,12 +310,63 @@ public class iChat extends JavaPlugin {
      * @param p - Player object for chatting
      * @param msg - Message to be formatted
 	 * @param multigroupsFormat - The requested chat format string
-	 * @return - New message format
+	 * @return - replacement for +groups
      */
-    public String parseGroups(Player p, String msg, String multigroupFormat){
+    public String parseGroups(Player p, String mgFormat){
         String[] groups = permissions.getHandler().getGroups(p.getWorld().getName(), p.getName());
+        
+        String output = "";
+        HashMap<Integer, String> unparsedGroups = new HashMap<Integer, String>();
+        int max = 0;
+        int key = 0;
+        for (String group : groups){
+        	for (Track track : tracks){
+        		for (String trackgroup : track.groups){
+        			if (trackgroup.equalsIgnoreCase(group)){
+        				key = track.priority;
+        				while (unparsedGroups.containsKey(key)){
+        					key++;
+        				}
+        				unparsedGroups.put(key, group);
+        				if (key > max){
+        					max = key;
+        				}
+        			}
+        		}
+        	}
+        }
+        
+        String format = parseVars(mgFormat, p);        
+        
+        for (int i=0; i<=max; i++){
+        	if (unparsedGroups.containsKey(i)){
+	        	String groupname = unparsedGroups.get(i);
+	        	String prefix = getGroupPrefix(groupname, p.getWorld().getName());
+	        	if (prefix == null){
+	        		prefix = "";
+	        	}
+	        	String suffix = getGroupSuffix(groupname, p.getWorld().getName());
+	        	if (suffix == null){
+	        		suffix = "";
+	        	}
+	        	groupname = getAlias(groupname);
+	        	String[] search = new String[] {"+suffix,+s", "+prefix,+p", "+group,+g"};
+	        	String[] replace = new String[] { suffix, prefix, groupname};
+	        	output = output + replaceVars(format, search, replace);
+        	}
+        }
+        
+		return output;
     }
 	
+	private String getAlias(String group) {
+		if (aliases.containsKey(group)){
+			return aliases.get(group);
+		} else {
+			return group;
+		}
+	}
+
 	/*
 	 * Return a health bar string.
 	 */
@@ -334,6 +426,36 @@ public class iChat extends JavaPlugin {
 	}
 	
 	/*
+	 * Get the group's prefix.
+	 */	
+	@SuppressWarnings("deprecation")
+	public String getGroupPrefix(String group, String worldname) {
+		if (permissions != null) {
+			// Permissions 3 no longer has "User prefixes"
+			console.sendMessage(group + ", " + worldname);
+			console.sendMessage(permissions.getHandler().getGroupRawPrefix(worldname, group));
+			return permissions.getHandler().getGroupRawPrefix(worldname, group);
+		}
+		console.sendMessage("[iChat::getPrefix] SEVERE: There is no Permissions module, why are we running?!??!?");
+		return null;
+	}
+	
+	/*
+	 * Get the group's suffix.
+	 */
+	@SuppressWarnings("deprecation")
+	public String getGroupSuffix(String group, String worldname) {
+		if (permissions != null) {
+			// Permissions 3 no longer has "User suffixes"
+			console.sendMessage(group + ", " + worldname);
+			console.sendMessage(permissions.getHandler().getGroupRawSuffix(worldname, group).toString());
+			return permissions.getHandler().getGroupRawSuffix(worldname, group);
+		}
+		console.sendMessage("[iChat::getSuffix] SEVERE: There is no Permissions module, why are we running?!??!?");
+		return null;
+	}
+	
+	/*
 	 * Get a user/group specific variable. User takes priority
 	 */
 	public String getVariable(Player player, String variable) {
@@ -365,6 +487,18 @@ public class iChat extends JavaPlugin {
 		console.sendMessage("[iChat::getGroup] SEVERE: There is no Permissions module, why are we running?!??!?");
 		return null;
 	}
+	
+	/*
+	 * Get the players groups (permissions 3 multigroups)
+	 */
+	public String[] getGroups(Player player) {
+		if (permissions != null) {
+			String[] group = permissions.getHandler().getGroups(player.getWorld().getName(), player.getName());
+			return group;
+		}
+		console.sendMessage("[iChat::getGroup] SEVERE: There is no Permissions module, why are we running?!??!?");
+		return null;
+	}
 
 	/*
 	private class customListener extends CustomEventListener {
@@ -387,6 +521,8 @@ public class iChat extends JavaPlugin {
 		}
 		if (args.length != 1) return false;
 		if (args[0].equalsIgnoreCase("reload")) {
+			aliases.clear();
+			tracks.clear();
 			loadConfig();
 			sender.sendMessage("[iChat] Config Reloaded");
 			return true;
