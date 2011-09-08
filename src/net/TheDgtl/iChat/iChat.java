@@ -34,12 +34,12 @@ import org.bukkit.craftbukkit.CraftServer;
 import org.bukkit.entity.Player;
 //import org.bukkit.event.CustomEventListener;
 import org.bukkit.event.Event;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.config.Configuration;
 
-import com.nijikokun.bukkit.Permissions.Permissions;
+import ru.tehkode.permissions.*;
+import ru.tehkode.permissions.bukkit.PermissionsEx;
 
 public class iChat extends JavaPlugin {
     
@@ -50,7 +50,7 @@ public class iChat extends JavaPlugin {
 		public List<String> groups = new ArrayList<String>();		
 	}
 	
-	public Permissions permissions = null;
+	public PermissionManager permissions = null;
 	
 	private playerListener pListener = new playerListener(this);
 	//private customListener cListener = new customListener();
@@ -81,10 +81,11 @@ public class iChat extends JavaPlugin {
 		console = new ColouredConsoleSender((CraftServer)getServer());
 		config = getConfiguration();
 		
-		permissions = (Permissions)checkPlugin("Permissions");
-		
-		// We now depend on Permissions, so disable here if it's not found for some reason
-		if (permissions == null || !checkVersion(permissions, '3')) {
+		//check for PermissionsEx plugin
+		if(pm.isPluginEnabled("PermissionsEx")){
+			permissions = PermissionsEx.getPermissionManager();
+		} else {
+			//not found, disable
 			console.sendMessage("[iChat] Permissions plugin not found or wrong version. Disabling");
 			pm.disablePlugin(this);
 			return;
@@ -124,24 +125,27 @@ public class iChat extends JavaPlugin {
 		meFormat = config.getString("me-format", meFormat);
 		List<String> tracknames = new ArrayList<String>();
 		tracknames = config.getKeys("tracks");
-		for (String track : tracknames){
-			this.console.sendMessage(track);
-			Track loadtrack = new Track();
-			loadtrack.groups = config.getStringList("tracks."+track+".groups", loadtrack.groups);
-			for (String group : loadtrack.groups){
-				console.sendMessage(group);
+		if (tracknames != null){
+			for (String track : tracknames){
+				//this.console.sendMessage(track);
+				Track loadtrack = new Track();
+				loadtrack.groups = config.getStringList("tracks."+track+".groups", loadtrack.groups);
+				/*for (String group : loadtrack.groups){
+					console.sendMessage(group);
+				}*/
+				loadtrack.priority = config.getInt("tracks."+track+".priority", 0);
+				//this.console.sendMessage(loadtrack.priority.toString());
+				loadtrack.name = track;
+				tracks.add(loadtrack);
 			}
-			loadtrack.priority = config.getInt("tracks."+track+".priority", 0);
-			this.console.sendMessage(loadtrack.priority.toString());
-			loadtrack.name = track;
-			tracks.add(loadtrack);
 		}
 		List<String> tmpaliases = new ArrayList<String>();
 		tmpaliases = config.getKeys("aliases");
-		for (String alias : tmpaliases){
-			aliases.put(alias, config.getString("aliases."+alias));
+		if (tmpaliases != null){
+			for (String alias : tmpaliases){
+				aliases.put(alias, config.getString("aliases."+alias));
+			}
 		}
-		
 	}
 	
 	private void defaultConfig() {
@@ -164,26 +168,6 @@ public class iChat extends JavaPlugin {
         config.setProperty("tracks.default.priority", 1);
         config.setProperty("aliases", aliases);
 		config.save();
-	}
-	
-	/*
-	 * Check if a plugin is loaded/enabled already. Returns the plugin if so, null otherwise
-	 */
-	private Plugin checkPlugin(String p) {
-		Plugin plugin = pm.getPlugin(p);
-		return checkPlugin(plugin);
-	}
-	
-	private Plugin checkPlugin(Plugin plugin) {
-		if (plugin != null && plugin.isEnabled()) {
-			console.sendMessage("[iChat] Found " + plugin.getDescription().getName() + " (v" + plugin.getDescription().getVersion() + ")");
-			return plugin;
-		}
-		return null;
-	}
-	
-	private boolean checkVersion(Plugin plugin, char Ver) {
-		return (plugin.getDescription().getVersion().charAt(0) == Ver);
 	}
 	
 	/*
@@ -290,7 +274,6 @@ public class iChat extends JavaPlugin {
 			groups = parseGroups(p, multigroupFormat);
 		}
 		
-		if (format == null) return msg;
 		// Order is important, this allows us to use all variables in the suffix and prefix! But no variables in the message
 		String[] search = new String[] {"+suffix,+s", "+prefix,+p", "+groups,+gs", "+group,+g", "+healthbar,+hb", "+health,+h", "+world,+w", "+time,+t", "+name,+n", "+displayname,+d", "+message,+m"};
 		String[] replace = new String[] { suffix, prefix, groups, group, healthbar, health, world, time, p.getName(), p.getDisplayName(), msg };
@@ -313,7 +296,7 @@ public class iChat extends JavaPlugin {
 	 * @return - replacement for +groups
      */
     public String parseGroups(Player p, String mgFormat){
-        String[] groups = permissions.getHandler().getGroups(p.getWorld().getName(), p.getName());
+        String[] groups = permissions.getUser(p).getGroupsNames();
         
         String output = "";
         HashMap<Integer, String> unparsedGroups = new HashMap<Integer, String>();
@@ -395,7 +378,7 @@ public class iChat extends JavaPlugin {
 	 */
 	public boolean hasPerm(Player player, String perm, boolean def) {
 		if (permissions != null) {
-			return permissions.getHandler().has(player, perm);
+			return permissions.has(player, perm);
 		} else {
 			return def;
 		}
@@ -406,8 +389,7 @@ public class iChat extends JavaPlugin {
 	 */
 	public String getPrefix(Player player) {
 		if (permissions != null) {
-			// Permissions 3 no longer has "User prefixes"
-			return permissions.getHandler().getUserPrefix(player.getWorld().getName(), player.getName());
+			return permissions.getUser(player).getPrefix(player.getWorld().getName());
 		}
 		console.sendMessage("[iChat::getPrefix] SEVERE: There is no Permissions module, why are we running?!??!?");
 		return null;
@@ -418,8 +400,7 @@ public class iChat extends JavaPlugin {
 	 */
 	public String getSuffix(Player player) {
 		if (permissions != null) {
-			// Permissions 3 no longer has "User suffixes"
-			return permissions.getHandler().getUserSuffix(player.getWorld().getName(), player.getName());
+			return permissions.getUser(player).getSuffix(player.getWorld().getName());
 		}
 		console.sendMessage("[iChat::getSuffix] SEVERE: There is no Permissions module, why are we running?!??!?");
 		return null;
@@ -428,13 +409,10 @@ public class iChat extends JavaPlugin {
 	/*
 	 * Get the group's prefix.
 	 */	
-	@SuppressWarnings("deprecation")
+	
 	public String getGroupPrefix(String group, String worldname) {
 		if (permissions != null) {
-			// Permissions 3 no longer has "User prefixes"
-			console.sendMessage(group + ", " + worldname);
-			console.sendMessage(permissions.getHandler().getGroupRawPrefix(worldname, group));
-			return permissions.getHandler().getGroupRawPrefix(worldname, group);
+			return permissions.getGroup(group).getPrefix(worldname);
 		}
 		console.sendMessage("[iChat::getPrefix] SEVERE: There is no Permissions module, why are we running?!??!?");
 		return null;
@@ -443,15 +421,23 @@ public class iChat extends JavaPlugin {
 	/*
 	 * Get the group's suffix.
 	 */
-	@SuppressWarnings("deprecation")
 	public String getGroupSuffix(String group, String worldname) {
 		if (permissions != null) {
-			// Permissions 3 no longer has "User suffixes"
-			console.sendMessage(group + ", " + worldname);
-			console.sendMessage(permissions.getHandler().getGroupRawSuffix(worldname, group).toString());
-			return permissions.getHandler().getGroupRawSuffix(worldname, group);
+			return permissions.getGroup(group).getSuffix(worldname);
 		}
 		console.sendMessage("[iChat::getSuffix] SEVERE: There is no Permissions module, why are we running?!??!?");
+		return null;
+	}
+	
+	/*
+	 * Get the players group
+	 */
+	public String getGroup(Player player) {
+		if (permissions != null) {
+			String groups[] = permissions.getUser(player).getGroupsNames(player.getWorld().getName());
+			return groups[0];
+		}
+		console.sendMessage("[iChat::getGroup] SEVERE: There is no Permissions module, why are we running?!??!?");
 		return null;
 	}
 	
@@ -461,43 +447,21 @@ public class iChat extends JavaPlugin {
 	public String getVariable(Player player, String variable) {
 		if (permissions != null) {
 			// Check for a user variable
-			String userVar = permissions.getHandler().getInfoString(player.getWorld().getName(), player.getName(), variable, false);
+			String userVar = permissions.getUser(player).getOption(variable); 
 			if (userVar != null && !userVar.isEmpty()) {
 				return userVar;
 			}
 			// Check for a group variable
-			String group = permissions.getHandler().getPrimaryGroup(player.getWorld().getName(), player.getName());
+			String group = permissions.getGroup(getGroup(player)).getName();
+					
 			if (group == null) return "";
-			String groupVar = permissions.getHandler().getInfoString(player.getWorld().getName(), group, variable, true);
+			String groupVar = permissions.getGroup(group).getOption(variable);
+					
 			if (groupVar == null) return "";
 			return groupVar;
 		}
 		console.sendMessage("[iChat::getVariable] SEVERE: There is no Permissions module, why are we running?!!??!?!");
 		return "";
-	}
-	
-	/*
-	 * Get the players group
-	 */
-	public String getGroup(Player player) {
-		if (permissions != null) {
-			String group = permissions.getHandler().getPrimaryGroup(player.getWorld().getName(), player.getName());
-			return group;
-		}
-		console.sendMessage("[iChat::getGroup] SEVERE: There is no Permissions module, why are we running?!??!?");
-		return null;
-	}
-	
-	/*
-	 * Get the players groups (permissions 3 multigroups)
-	 */
-	public String[] getGroups(Player player) {
-		if (permissions != null) {
-			String[] group = permissions.getHandler().getGroups(player.getWorld().getName(), player.getName());
-			return group;
-		}
-		console.sendMessage("[iChat::getGroup] SEVERE: There is no Permissions module, why are we running?!??!?");
-		return null;
 	}
 
 	/*
