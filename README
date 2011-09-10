@@ -1,34 +1,35 @@
 =============
  Description
 =============
-Custom chat formatting. 
-Based on the idea of iChat v1.5 by Nijikokun.
+Custom chat formatting for Bukkit.
+Incldues support for users in multiple groups.
+Requires PermissionsEx by t3hk0d3  
 
-Download (Direct JAR): http://thedgtl.net/bukkit/iChat-p3.jar
-Source: https://github.com/TheDgtl/iChat
+Based on iChat v2.3.3 by Drakia
 
 =============
  Features
 =============
-Supports Permissions 3.1.x
-Allows you to specify a prefix/suffix for users and groups
+Allows you to utilise prefixes/suffixes for users and groups
 A user-specific prefix/suffix will take priority over a group prefix/suffix
-Colors are supported in all parts of the formatting and chat text
+Colours are supported in all parts of the formatting and chat text
 Usable health bar and health amount in the formatting
+Supports users with multiple groups
 Configurable censoring 
 
 =============
  Formatting
 =============
-Inside plugins/iChat/config.yml you will find the line "message-format"
-This is the line you need to edit to change the format of chat messages, it can contain characters, color codes, and variables.
-To use colors use the standard Minecraft color codes found here: http://www.minecraftwiki.net/wiki/Classic_Server_Protocol#Color_Codes
+Inside plugins/PExChat/config.yml you will find the line "message-format"
+This is the line you need to edit to change the format of chat messages, it can contain characters, colour codes, and variables.
+To use colours use the standard Minecraft colour codes found here: http://www.minecraftwiki.net/wiki/Classic_Server_Protocol#Color_Codes
 
 Available variables:
 +prefix - The prefix for this user, or this users group if they don't have one defined.
 +suffix - The suffix for this user, or this users group if they don't have one defined.
 +name - The users name
 +displayname - The users display name (Set by plugins such as Towny)
++groups - All the groups a user is in (see below)
 +group - The users group
 +healthbar - A visual health bar for this user 
 +health - The users current health value (Between 0 and 20)
@@ -39,7 +40,7 @@ Available variables:
 Example (Default):
 message-format: '[+prefix+group+suffix&f] +name: +message'
 
-There is now the option of having an unlimited amount of custom variabled in the form of +{varname}
+There is now the option of having an unlimited amount of custom variables in the form of +{varname}
 These variables are defined in the Permissions config file under the 'info' header of either the user or the group, the same as a prefix.
 If these variables contain the static variables such as +prefix, +suffix, +health, etc then those variables will be replaced with their respective values.
 If a variable does not exist then it will be replaced with a blank string.
@@ -50,14 +51,95 @@ Permissions:
 ---------------------
     Admins:
         default: false
-        info:
-            prefix: ''
-            suffix: ''
+        options:
             var1: '[+health]'
 
 Config:
 ---------------------
 message-format: '[+prefix&f] +{var1} +name: +message
+
+=============
+ Multigroups
+=============
+This plugin supports users who inherit multiple groups. It can use this to include each group the player is in in the formatted chat message
+To achieve this, an additional variable has been added. The "multigroup-format" property in the config file specifies what
+the chat formatting for multiple groups looks like. Like "message-format" it can also contain characters, colour codes, and variables.
+To enable multigroups, place the +groups tag anywhere in the message-format above. 
+
+Available variables:
++prefix - The prefix of each group to be showed
++suffix - The suffix of each group to be showed
++group - The name of the group to be showed
+
+Example (Default):
+multigroup-format: '[+prefix+group+suffix]'
+
+Say the user was in three groups, Herp, Derp and Default. With the above config, anywhere that +groups was added to the
+message-format property above would be replaced with "[Herp][Derp][Default]".
+
+PExChat also supports specifying in what order the groups should appear, via the use of tracks.
+
+=============
+   Tracks
+=============
+If you ever used Permissions 3, you would know that a track enables you to specify an order of promotion within P3.
+Tracks in PExChat work similarly, however instead of being ranks in a ladder, tracks are just a way of referring to
+groups of groups. Tracks can also have a priority specified, tracks with a lower number priority will have their groups
+shown before tracks with higher number priorities.
+An example of a track in the config follows:
+
+tracks:
+	default:
+		priority: 1
+		groups:
+		- Default
+	sometrack:
+		priority: 2
+		groups:
+		- Derp
+		
+Setting up tracks as above will replace the +groups tag with the following, differing from the order above:
+[Default][Derp]
+
+Note that because the group "Herp" was not listed in a track, the output of the +groups tag will not include the group.
+To disable a track from being shown, set it's priority to zero.
+
+Track variables can also be accessed directly. Assuming a user is only in one group in a track, variables of that group in the
+track which the user is in can be accessed directly by putting any of the following tags "+prefix.{trackname}", "+suffix.{trackname}" and "+group.{trackname}"
+Where {trackname} is the name given to the track under the tracks property. These tags can be placed anywhere in the message-format property.
+
+Example: for a user in groups herp, derp and default with track config as below:
+
+tracks:
+	default:
+		priority: 1
+		groups:
+		- Default
+	sometrack:
+		priority: 2
+		groups:
+		- Derp
+	anothertrack:
+		priority: 0
+		groups:
+		- Herp
+
+message-format: '+groups <+prefix.anothertrack+group.anothertrack+suffix.anothertrack> +name: +message'
+
+This configuration would result in the following output:
+"[Default][Derp] <Herp> playername: message!"
+
+=============
+  Aliases
+=============
+PExChat also includes support for providing an alias for any in-game group. The aliases will appear anywhere the group's name
+would have otherwise appeared, with the exception of when the +group tag is used in the message-format property.
+
+Example:
+aliases:
+	Default: Guest
+
+This would cause any occurence of the name of the "Default" group to appear as "Guest".
 
 =============
 Configuration
@@ -73,16 +155,26 @@ me-format - The message format used for /me, follows same format as message-form
 =============
  Permissions
 =============
-ichat.color - Allow this group/user to use color in their chat messages.
-ichat.reload - Allow reloading the iChat config
+pexchat.color - Allow this group/user to use color in their chat messages.
+pexchat.reload - Allow reloading the PExChat config
 
 =============
   Commands
 =============
-/ichat reload - Reload the iChat config file.
+/pexchat reload - Reload the PExChat config file.
 
 =============
   Changes
+=============
+[Version 3.0.0]
+  - Added support for multiple groups in chat formatting
+  - Removed Permissions 2.7.x and 3.x support
+  - Added PermissionsEx support
+  - Added group tracks for ordering multiple groups in chat formatting
+  - Added group aliases: enables changing the name of a group in the chat formatting
+
+=============
+iChat Changes
 =============
 [Version 2.3.3-p3]
   - Added "/ichat reload" command
@@ -103,29 +195,4 @@ ichat.reload - Allow reloading the iChat config
 [Version 2.2.0]
   - Added the ability to have an unlimited amount of variables in message-format
   - Changed version numbering
-[Version 2.11]
-  - Now uses per-world permissions information
-[Version 2.10]
-  - Allow admins to enable color on a permissions basis
-[Version 2.09]
-  - Another small update to Permissions (Returned false when I should have returned true)
-[Version 2.08]
-  - Updated Permissions version detection to only count the first two parts of the version (x.x, not x.x.x)
-[Version 2.07]
-  - Added +time/+t tag for timestamp
-[Version 2.06]
-  - Added +world/+w tag
-[Version 2.05]
-  - Core GM support removed, depends on FakePermissions if you use GM.
-[Version 2.04]
-  - Re-arranged variables, you can now use everything in the suffix/prefix
-[Version 2.03]
-  - Verify that all available variables aren't null before calling parse
-  - Fixed crash caused by color code at end of message (Basic fix, added a space)
-[Version 2.02]
-  - Fix a NPE someone was getting
-[Version 2.01]
-  - There's a bug in Permissions 2.1 in getPermissionString, switched to getUserPermissionString
-[Version 2.00]
-  - Initial re-write of Niji's plugin.
-  - Added Permissions 2.0/2.1, and GroupManager support.
+See iChat by Drakia for more previous changelog entries. 
