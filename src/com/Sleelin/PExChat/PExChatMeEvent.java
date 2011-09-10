@@ -1,15 +1,15 @@
-package net.TheDgtl.iChat;
+package com.Sleelin.PExChat;
 
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 
-public class iChatMeEvent extends Event {
+public class PExChatMeEvent extends Event {
 	private static final long serialVersionUID = -4007312028228633239L;
 	private String message;
 	private Player player;
 	
-	public iChatMeEvent(final Player player, final String message) {
-		super("iChatMeEvent");
+	public PExChatMeEvent(final Player player, final String message) {
+		super("PExChatMeEvent");
 		this.player = player;
 		this.message = message;
 	}

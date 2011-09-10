@@ -1,9 +1,10 @@
-package net.TheDgtl.iChat;
+package com.Sleelin.PExChat;
 
 /**
- * iChat - A chat formatting plugin for Bukkit.
- * Copyright (C) 2011 Steven "Drakia" Scott <Drakia@Gmail.com>
+ * PExChat - A chat formatting plugin for Bukkit.
+ * Author: Sleelin 
  * 
+ * License:
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -41,7 +42,7 @@ import org.bukkit.util.config.Configuration;
 import ru.tehkode.permissions.*;
 import ru.tehkode.permissions.bukkit.PermissionsEx;
 
-public class iChat extends JavaPlugin {
+public class PExChat extends JavaPlugin {
     
 	//For storing tracks and their contained groups and priority
 	public final class Track {
@@ -74,7 +75,7 @@ public class iChat extends JavaPlugin {
 	public HashMap<String, String> aliases = new HashMap<String, String>();
 	
 	// External interface
-	public static iChat ichat = null;
+	public static PExChat pexchat = null;
 	
 	public void onEnable() {
 		pm = getServer().getPluginManager();
@@ -86,7 +87,7 @@ public class iChat extends JavaPlugin {
 			permissions = PermissionsEx.getPermissionManager();
 		} else {
 			//not found, disable
-			console.sendMessage("[iChat] Permissions plugin not found or wrong version. Disabling");
+			console.sendMessage("[PExChat] Permissions plugin not found or wrong version. Disabling");
 			pm.disablePlugin(this);
 			return;
 		}
@@ -103,13 +104,13 @@ public class iChat extends JavaPlugin {
 		//pm.registerEvent(Event.Type.CUSTOM_EVENT, cListener, Event.Priority.Normal, this);
 		
 		// Setup external interface
-		iChat.ichat = this;
+		PExChat.pexchat = this;
 		
 		console.sendMessage(getDescription().getName() + " (v" + getDescription().getVersion() + ") enabled");
 	}
 	
 	public void onDisable() {
-		console.sendMessage("[iChat] iChat Disabled");
+		console.sendMessage("[PExChat] PExChat Disabled");
 	}
 	
 	private void loadConfig() {
@@ -185,7 +186,7 @@ public class iChat extends JavaPlugin {
 		return sb.toString();
 	}
 	
-	/*path
+	/*
 	 * Parse a given text string and replace the variables/color codes.
 	 */
 	public String replaceVars(String format, String[] search, String[] replace) {
@@ -208,7 +209,7 @@ public class iChat extends JavaPlugin {
 	 */
 	public String censor(Player p, String msg) {
 		if (censorWords == null || censorWords.size() == 0) {
-			if (!hasPerm(p, "ichat.color", true))
+			if (!hasPerm(p, "pexchat.color"))
 				return msg.replaceAll("(&([a-f0-9]))", "");
 			else 
 				return msg;
@@ -228,7 +229,7 @@ public class iChat extends JavaPlugin {
 			}
 			out.append(word).append(" ");
 		}
-		if (!hasPerm(p, "ichat.color", true))
+		if (!hasPerm(p, "pexchat.color"))
 			return out.toString().replaceAll("(&([a-f0-9]))", "").trim();
 		else 
 			return out.toString().trim();
@@ -267,20 +268,58 @@ public class iChat extends JavaPlugin {
 		// Censor message
 		msg = censor(p, msg);
 		
+		// Add user defined variables into the message 
 		String format = parseVars(chatFormat, p);
 		
+		// Add multigroup formatted text in place of +groups
 		String groups = "";
 		if (format.contains("+groups")) {
 			groups = parseGroups(p, multigroupFormat);
 		}
 		
+		// Add support for track-specific prefix/suffix/groupname
+		ArrayList<String> searchlist = new ArrayList<String>();		
+		ArrayList<String> replacelist = new ArrayList<String>();
+		
+		// Get the groups a player is in
+		String[] playergroups = permissions.getUser(p).getGroupsNames();
+		// For each track, add new search and replace variables
+		for (Track track : tracks){
+			// For each group a player is in, see if it is in this track 
+			for (String playergroup : playergroups){
+				if (track.groups.contains(playergroup)){
+					// Add the variables to be replaced
+					searchlist.add("+prefix."+track.name);
+					searchlist.add("+suffix."+track.name);
+					searchlist.add("+group."+track.name);
+					// Add the content to put in place of the variables
+					replacelist.add(getGroupPrefix(playergroup, p.getWorld().getName()));
+					replacelist.add(getGroupSuffix(playergroup, p.getWorld().getName()));
+					replacelist.add(getAlias(playergroup));
+				}
+			}
+		}
+		
+		// Add every other variable and replacement into the list
 		// Order is important, this allows us to use all variables in the suffix and prefix! But no variables in the message
 		String[] search = new String[] {"+suffix,+s", "+prefix,+p", "+groups,+gs", "+group,+g", "+healthbar,+hb", "+health,+h", "+world,+w", "+time,+t", "+name,+n", "+displayname,+d", "+message,+m"};
-		String[] replace = new String[] { suffix, prefix, groups, group, healthbar, health, world, time, p.getName(), p.getDisplayName(), msg };
+		String[] replace = new String[] { suffix, prefix, groups, group, healthbar, health, world, time, p.getName(), p.getDisplayName(), msg };		
+		for (int i=0; i<search.length; i++){
+			searchlist.add(search[i]);
+		}		
+		for (int i=0; i<replace.length; i++){
+			replacelist.add(replace[i]);
+		}
+		
+		// Convert back to arrays
+		search = (String[]) searchlist.toArray(new String[searchlist.size()]);
+		replace = (String[]) replacelist.toArray(new String[replacelist.size()]);
+
 		return replaceVars(format, search, replace);
 	}
 	
 	/**
+	 * Parse chat method for missing chat format
 	 * @param p - Player object for chatting
 	 * @param msg - Message to be formatted
 	 * @return - New message format
@@ -290,22 +329,33 @@ public class iChat extends JavaPlugin {
 	}
     
     /**
+     * Parse multigroup chat format
      * @param p - Player object for chatting
      * @param msg - Message to be formatted
 	 * @param multigroupsFormat - The requested chat format string
 	 * @return - replacement for +groups
      */
     public String parseGroups(Player p, String mgFormat){
-        String[] groups = permissions.getUser(p).getGroupsNames();
+        // Get all the groups a player is in
+    	String[] groups = permissions.getUser(p).getGroupsNames();
         
         String output = "";
         HashMap<Integer, String> unparsedGroups = new HashMap<Integer, String>();
         int max = 0;
         int key = 0;
+        
+        // Iterate through each group a player is in and add it to the list
         for (String group : groups){
+        	// Go through each track to check if the group is in the track
         	for (Track track : tracks){
+        		// If track not meant for ordering purposes, skip
+        		if (track.priority<1){
+        			continue;
+        		}
+        		// Go through the groups in the track to see if they match the current player group
         		for (String trackgroup : track.groups){
         			if (trackgroup.equalsIgnoreCase(group)){
+        				// Add it with the correct priority
         				key = track.priority;
         				while (unparsedGroups.containsKey(key)){
         					key++;
@@ -319,8 +369,10 @@ public class iChat extends JavaPlugin {
         	}
         }
         
-        String format = parseVars(mgFormat, p);        
+        // Parse user defined variables in the group message
+        String format = parseVars(mgFormat, p);
         
+        // Add each group in the right order to the message
         for (int i=0; i<=max; i++){
         	if (unparsedGroups.containsKey(i)){
 	        	String groupname = unparsedGroups.get(i);
@@ -333,6 +385,8 @@ public class iChat extends JavaPlugin {
 	        		suffix = "";
 	        	}
 	        	groupname = getAlias(groupname);
+	        	
+	        	// Replace the group variables
 	        	String[] search = new String[] {"+suffix,+s", "+prefix,+p", "+group,+g"};
 	        	String[] replace = new String[] { suffix, prefix, groupname};
 	        	output = output + replaceVars(format, search, replace);
@@ -342,6 +396,11 @@ public class iChat extends JavaPlugin {
 		return output;
     }
 	
+    /**
+     * Get the alias of a group, or return the group name if it doesn't have an alias
+     * @param group - group to return alias for
+     * @return
+     */
 	private String getAlias(String group) {
 		if (aliases.containsKey(group)){
 			return aliases.get(group);
@@ -350,8 +409,10 @@ public class iChat extends JavaPlugin {
 		}
 	}
 
-	/*
+	/**
 	 * Return a health bar string.
+	 * @param player - who the health bar should generate for
+	 * @return - 
 	 */
 	public String healthBar(Player player) {
 		float maxHealth = 20;
@@ -373,76 +434,94 @@ public class iChat extends JavaPlugin {
 		out.append("&f");
 		return out.toString();
 	}
-	/*
+	
+	/**
 	 * Check whether the player has the given permissions.
+	 * @param player - the player who is being checked
+	 * @param perm - what permission to check for
+	 * @return - Whether player has the permission, or is an op
 	 */
-	public boolean hasPerm(Player player, String perm, boolean def) {
-		if (permissions != null) {
-			return permissions.has(player, perm);
+	public boolean hasPerm(Player player, String perm) {
+		if (permissions.has(player, perm)) {
+			return true;
 		} else {
-			return def;
+			return player.isOp();
 		}
 	}
 	
-	/*
-	 * Get the players group prefix.
+	/**
+	 * Get the players prefix.
+	 * @param player - who to get the prefix for
+	 * @return - Player's prefix, direct or inherited
 	 */
 	public String getPrefix(Player player) {
 		if (permissions != null) {
 			return permissions.getUser(player).getPrefix(player.getWorld().getName());
 		}
-		console.sendMessage("[iChat::getPrefix] SEVERE: There is no Permissions module, why are we running?!??!?");
+		console.sendMessage("[PExChat::getPrefix] SEVERE: There is no Permissions module, why are we running?!??!?");
 		return null;
 	}
 	
-	/*
-	 * Get the players group suffix.
+	/**
+	 * Get the players suffix.
+	 * @param player - who to get the suffix for
+	 * @return - Player's suffix, direct or inherited
 	 */
 	public String getSuffix(Player player) {
 		if (permissions != null) {
 			return permissions.getUser(player).getSuffix(player.getWorld().getName());
 		}
-		console.sendMessage("[iChat::getSuffix] SEVERE: There is no Permissions module, why are we running?!??!?");
+		console.sendMessage("[PExChat::getSuffix] SEVERE: There is no Permissions module, why are we running?!??!?");
 		return null;
 	}
 	
-	/*
+	/**
 	 * Get the group's prefix.
-	 */	
-	
+	 * @param group - group whose prefix to get
+	 * @param worldname - what world the prefix should come from
+	 * @return - Group's prefix
+	 */
 	public String getGroupPrefix(String group, String worldname) {
 		if (permissions != null) {
 			return permissions.getGroup(group).getPrefix(worldname);
 		}
-		console.sendMessage("[iChat::getPrefix] SEVERE: There is no Permissions module, why are we running?!??!?");
+		console.sendMessage("[PExChat::getPrefix] SEVERE: There is no Permissions module, why are we running?!??!?");
 		return null;
 	}
 	
-	/*
+	/**
 	 * Get the group's suffix.
+	 * @param group - group whose suffix to get
+	 * @param worldname - what world the suffix should come from
+	 * @return - Group's suffix
 	 */
 	public String getGroupSuffix(String group, String worldname) {
 		if (permissions != null) {
 			return permissions.getGroup(group).getSuffix(worldname);
 		}
-		console.sendMessage("[iChat::getSuffix] SEVERE: There is no Permissions module, why are we running?!??!?");
+		console.sendMessage("[PExChat::getSuffix] SEVERE: There is no Permissions module, why are we running?!??!?");
 		return null;
 	}
 	
-	/*
+	/**
 	 * Get the players group
+	 * @param player - who's group to get
+	 * @return - Players primary group
 	 */
 	public String getGroup(Player player) {
 		if (permissions != null) {
 			String groups[] = permissions.getUser(player).getGroupsNames(player.getWorld().getName());
 			return groups[0];
 		}
-		console.sendMessage("[iChat::getGroup] SEVERE: There is no Permissions module, why are we running?!??!?");
+		console.sendMessage("[PExChat::getGroup] SEVERE: There is no Permissions module, why are we running?!??!?");
 		return null;
 	}
 	
-	/*
+	/**
 	 * Get a user/group specific variable. User takes priority
+	 * @param player - who to get the variable for
+	 * @param variable - what variable to look for
+	 * @return - Value of variable in permission setup
 	 */
 	public String getVariable(Player player, String variable) {
 		if (permissions != null) {
@@ -460,27 +539,17 @@ public class iChat extends JavaPlugin {
 			if (groupVar == null) return "";
 			return groupVar;
 		}
-		console.sendMessage("[iChat::getVariable] SEVERE: There is no Permissions module, why are we running?!!??!?!");
+		console.sendMessage("[PExChat::getVariable] SEVERE: There is no Permissions module, why are we running?!!??!?!");
 		return "";
 	}
 
-	/*
-	private class customListener extends CustomEventListener {
-		@Override
-		public void onCustomEvent(Event event) {
-			if (event.getEventName().equalsIgnoreCase("iChatMeEvent")) {
-				console.sendMessage("iChat ME Event");
-			}
-		}
-	}*/
-	
-	/*
+	/**
 	 * Command Handler
 	 */
 	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-		if (!command.getName().equalsIgnoreCase("ichat")) return false;
-		if (sender instanceof Player && !hasPerm((Player)sender, "ichat.reload", sender.isOp())) {
-			sender.sendMessage("[iChat] Permission Denied");
+		if (!command.getName().equalsIgnoreCase("pexchat")) return false;
+		if (sender instanceof Player && !hasPerm((Player)sender, "pexchat.reload")) {
+			sender.sendMessage("[PExChat] Permission Denied");
 			return true;
 		}
 		if (args.length != 1) return false;
@@ -488,7 +557,7 @@ public class iChat extends JavaPlugin {
 			aliases.clear();
 			tracks.clear();
 			loadConfig();
-			sender.sendMessage("[iChat] Config Reloaded");
+			sender.sendMessage("[PExChat] Config Reloaded");
 			return true;
 		}
 		return false;

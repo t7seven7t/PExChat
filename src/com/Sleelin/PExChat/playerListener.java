@@ -1,7 +1,7 @@
-package net.TheDgtl.iChat;
+package com.Sleelin.PExChat;
 
 /**
- * iChat - A chat formatting plugin for Bukkit.
+ * PExChat - A chat formatting plugin for Bukkit.
  * Copyright (C) 2011 Steven "Drakia" Scott <Drakia@Gmail.com>
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -25,39 +25,39 @@ import org.bukkit.event.player.PlayerListener;
 
 public class playerListener extends PlayerListener {
 	// Use this for permissions checking.
-	iChat ichat;
+	PExChat pexchat;
 	
-	playerListener(iChat ichat) {
-		this.ichat = ichat;
+	playerListener(PExChat ichat) {
+		this.pexchat = ichat;
 	}
 	
 	@Override
 	public void onPlayerChat(PlayerChatEvent event) {
-		if (ichat.permissions == null) return;
+		if (pexchat.permissions == null) return;
 		if (event.isCancelled()) return;
 		Player p = event.getPlayer();
 		String msg = event.getMessage();
 		
-		event.setFormat( ichat.parseChat(p, msg) + " " );
+		event.setFormat( pexchat.parseChat(p, msg) + " " );
 	}
 	
 	// Use CommandPreprocess because that's what Justin said.
 	@Override
 	public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event) {
-		if (ichat.permissions == null) return;
+		if (pexchat.permissions == null) return;
 		if (event.isCancelled()) return;
 		Player p = event.getPlayer();
 		String message = event.getMessage();
 		
 		if (message.toLowerCase().startsWith("/me ")) {
 			String s = message.substring(message.indexOf(" ")).trim();
-			String formatted = ichat.parseChat(p, s, ichat.meFormat);
+			String formatted = pexchat.parseChat(p, s, pexchat.meFormat);
 			// Call custom event
-			iChatMeEvent meEvent = new iChatMeEvent(p, s);
-			ichat.getServer().getPluginManager().callEvent(meEvent);
+			PExChatMeEvent meEvent = new PExChatMeEvent(p, s);
+			pexchat.getServer().getPluginManager().callEvent(meEvent);
 			
-			ichat.console.sendMessage(formatted);
-			for (Player t : ichat.getServer().getOnlinePlayers()) {
+			pexchat.console.sendMessage(formatted);
+			for (Player t : pexchat.getServer().getOnlinePlayers()) {
 				t.sendMessage(formatted);
 			}
 			event.setCancelled(true);
