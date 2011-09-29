@@ -283,8 +283,11 @@ public class PExChat extends JavaPlugin {
 		
 		// Get the groups a player is in
 		String[] playergroups = permissions.getUser(p).getGroupsNames();
+		
+		Boolean found;
 		// For each track, add new search and replace variables
 		for (Track track : tracks){
+			found = false;
 			// For each group a player is in, see if it is in this track 
 			for (String playergroup : playergroups){
 				if (track.groups.contains(playergroup)){
@@ -296,7 +299,17 @@ public class PExChat extends JavaPlugin {
 					replacelist.add(getGroupPrefix(playergroup, p.getWorld().getName()));
 					replacelist.add(getGroupSuffix(playergroup, p.getWorld().getName()));
 					replacelist.add(getAlias(playergroup));
+					// Disable the track variable
+					found = true;
 				}
+			}
+			if (found.equals(false)){
+				searchlist.add("+prefix."+track.name);
+				searchlist.add("+suffix."+track.name);
+				searchlist.add("+group."+track.name);
+				replacelist.add("");
+				replacelist.add("");
+				replacelist.add("");
 			}
 		}
 		
