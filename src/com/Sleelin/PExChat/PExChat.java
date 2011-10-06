@@ -25,15 +25,13 @@ import java.util.Date;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.HashMap;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
-import org.bukkit.craftbukkit.command.ColouredConsoleSender;
-import org.bukkit.craftbukkit.CraftServer;
 import org.bukkit.entity.Player;
-//import org.bukkit.event.CustomEventListener;
 import org.bukkit.event.Event;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -58,7 +56,7 @@ public class PExChat extends JavaPlugin {
 	
 	private PluginManager pm;
 	//private Logger log;
-	public ColouredConsoleSender console = null;
+	public Logger console = null;
 	Configuration config;
 	
 	// Config variables
@@ -79,7 +77,7 @@ public class PExChat extends JavaPlugin {
 	
 	public void onEnable() {
 		pm = getServer().getPluginManager();
-		console = new ColouredConsoleSender((CraftServer)getServer());
+		console = Logger.getLogger("Minecraft");
 		config = getConfiguration();
 		
 		//check for PermissionsEx plugin
@@ -87,7 +85,7 @@ public class PExChat extends JavaPlugin {
 			permissions = PermissionsEx.getPermissionManager();
 		} else {
 			//not found, disable
-			console.sendMessage("[PExChat] Permissions plugin not found or wrong version. Disabling");
+			console.info("[PExChat] Permissions plugin not found or wrong version. Disabling");
 			pm.disablePlugin(this);
 			return;
 		}
@@ -101,16 +99,15 @@ public class PExChat extends JavaPlugin {
 		// Register events
 		pm.registerEvent(Event.Type.PLAYER_CHAT, pListener, Event.Priority.Normal, this);
 		pm.registerEvent(Event.Type.PLAYER_COMMAND_PREPROCESS, pListener, Event.Priority.Normal, this);
-		//pm.registerEvent(Event.Type.CUSTOM_EVENT, cListener, Event.Priority.Normal, this);
 		
 		// Setup external interface
 		PExChat.pexchat = this;
 		
-		console.sendMessage(getDescription().getName() + " (v" + getDescription().getVersion() + ") enabled");
+		console.info("["+getDescription().getName() + "] v" + getDescription().getVersion() + " enabled");
 	}
 	
 	public void onDisable() {
-		console.sendMessage("[PExChat] PExChat Disabled");
+		console.info("["+getDescription().getName()+"] PExChat Disabled");
 	}
 	
 	private void loadConfig() {
@@ -128,14 +125,9 @@ public class PExChat extends JavaPlugin {
 		tracknames = config.getKeys("tracks");
 		if (tracknames != null){
 			for (String track : tracknames){
-				//this.console.sendMessage(track);
 				Track loadtrack = new Track();
 				loadtrack.groups = config.getStringList("tracks."+track+".groups", loadtrack.groups);
-				/*for (String group : loadtrack.groups){
-					console.sendMessage(group);
-				}*/
 				loadtrack.priority = config.getInt("tracks."+track+".priority", 0);
-				//this.console.sendMessage(loadtrack.priority.toString());
 				loadtrack.name = track;
 				tracks.add(loadtrack);
 			}
@@ -471,7 +463,7 @@ public class PExChat extends JavaPlugin {
 		if (permissions != null) {
 			return permissions.getUser(player).getPrefix(player.getWorld().getName());
 		}
-		console.sendMessage("[PExChat::getPrefix] SEVERE: There is no Permissions module, why are we running?!??!?");
+		console.severe("[ There is no Permissions module, why are we running?!??!?");
 		return null;
 	}
 	
@@ -484,7 +476,7 @@ public class PExChat extends JavaPlugin {
 		if (permissions != null) {
 			return permissions.getUser(player).getSuffix(player.getWorld().getName());
 		}
-		console.sendMessage("[PExChat::getSuffix] SEVERE: There is no Permissions module, why are we running?!??!?");
+		console.severe("["+getDescription().getName()+"] There is no Permissions module, why are we running?!??!?");
 		return null;
 	}
 	
@@ -498,7 +490,7 @@ public class PExChat extends JavaPlugin {
 		if (permissions != null) {
 			return permissions.getGroup(group).getPrefix(worldname);
 		}
-		console.sendMessage("[PExChat::getPrefix] SEVERE: There is no Permissions module, why are we running?!??!?");
+		console.severe("["+getDescription().getName()+"] There is no Permissions module, why are we running?!??!?");
 		return null;
 	}
 	
@@ -512,7 +504,7 @@ public class PExChat extends JavaPlugin {
 		if (permissions != null) {
 			return permissions.getGroup(group).getSuffix(worldname);
 		}
-		console.sendMessage("[PExChat::getSuffix] SEVERE: There is no Permissions module, why are we running?!??!?");
+		console.severe("["+getDescription().getName()+"] There is no Permissions module, why are we running?!??!?");
 		return null;
 	}
 	
@@ -526,7 +518,7 @@ public class PExChat extends JavaPlugin {
 			String groups[] = permissions.getUser(player).getGroupsNames(player.getWorld().getName());
 			return groups[0];
 		}
-		console.sendMessage("[PExChat::getGroup] SEVERE: There is no Permissions module, why are we running?!??!?");
+		console.severe("["+getDescription().getName()+"] There is no Permissions module, why are we running?!??!?");
 		return null;
 	}
 	
@@ -552,7 +544,7 @@ public class PExChat extends JavaPlugin {
 			if (groupVar == null) return "";
 			return groupVar;
 		}
-		console.sendMessage("[PExChat::getVariable] SEVERE: There is no Permissions module, why are we running?!!??!?!");
+		console.severe("["+getDescription().getName()+"] There is no Permissions module, why are we running?!??!?");
 		return "";
 	}
 

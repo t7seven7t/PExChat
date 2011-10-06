@@ -56,7 +56,7 @@ public class playerListener extends PlayerListener {
 			PExChatMeEvent meEvent = new PExChatMeEvent(p, s);
 			pexchat.getServer().getPluginManager().callEvent(meEvent);
 			
-			pexchat.console.sendMessage(formatted);
+			pexchat.console.info(formatted);
 			for (Player t : pexchat.getServer().getOnlinePlayers()) {
 				t.sendMessage(formatted);
 			}
