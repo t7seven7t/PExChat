@@ -2,7 +2,7 @@
  Description
 =============
 Custom chat formatting for Bukkit.
-Incldues support for users in multiple groups.
+Includes support for users in multiple groups.
 Requires PermissionsEx by t3hk0d3  
 
 Based on iChat v2.3.3 by Drakia
@@ -10,7 +10,7 @@ Based on iChat v2.3.3 by Drakia
 =============
  Features
 =============
-Allows you to utilise prefixes/suffixes for users and groups
+Allows you to utilize prefixes/suffixes for users and groups
 A user-specific prefix/suffix will take priority over a group prefix/suffix
 Colours are supported in all parts of the formatting and chat text
 Usable health bar and health amount in the formatting
@@ -139,7 +139,7 @@ Example:
 aliases:
 	Default: Guest
 
-This would cause any occurence of the name of the "Default" group to appear as "Guest".
+This would cause any occurrence of the name of the "Default" group to appear as "Guest".
 
 =============
 Configuration
