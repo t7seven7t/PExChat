@@ -2,14 +2,15 @@ package com.Sleelin.PExChat;
 
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
+import org.bukkit.event.HandlerList;
 
 public class PExChatMeEvent extends Event {
-	private static final long serialVersionUID = -4007312028228633239L;
+	private static final HandlerList handlers = new HandlerList();
 	private String message;
 	private Player player;
 	
 	public PExChatMeEvent(final Player player, final String message) {
-		super("PExChatMeEvent");
+		
 		this.player = player;
 		this.message = message;
 	}
@@ -20,5 +21,14 @@ public class PExChatMeEvent extends Event {
 	
 	public Player getPlayer() {
 		return player;
+	}
+
+	@Override
+	public HandlerList getHandlers() {
+		return handlers;
+	}
+	
+	public static HandlerList getHandlerList() {
+		return handlers;
 	}
 }
