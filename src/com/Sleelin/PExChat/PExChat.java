@@ -20,22 +20,25 @@ package com.Sleelin.PExChat;
  */
 
 import java.io.File;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.HashMap;
+import java.util.Set;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.event.Event;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.util.config.Configuration;
 
 import ru.tehkode.permissions.*;
 import ru.tehkode.permissions.bukkit.PermissionsEx;
@@ -57,7 +60,8 @@ public class PExChat extends JavaPlugin {
 	private PluginManager pm;
 	//private Logger log;
 	public Logger console = null;
-	Configuration config;
+	FileConfiguration config;
+	File configFile;
 	
 	// Config variables
 	public String censorChar = "*";
@@ -78,7 +82,7 @@ public class PExChat extends JavaPlugin {
 	public void onEnable() {
 		pm = getServer().getPluginManager();
 		console = Logger.getLogger("Minecraft");
-		config = getConfiguration();
+		
 		
 		//check for PermissionsEx plugin
 		if(pm.isPluginEnabled("PermissionsEx")){
@@ -91,14 +95,15 @@ public class PExChat extends JavaPlugin {
 		}
 		
 		// Create default config if it doesn't exist.
-		if (!(new File(getDataFolder(), "config.yml")).exists()) {
+		configFile = new File(getDataFolder() + "/config.yml");
+		if (!configFile.exists()){
 			defaultConfig();
 		}
 		loadConfig();
 		
 		// Register events
-		pm.registerEvent(Event.Type.PLAYER_CHAT, pListener, Event.Priority.Normal, this);
-		pm.registerEvent(Event.Type.PLAYER_COMMAND_PREPROCESS, pListener, Event.Priority.Normal, this);
+		pm.registerEvents(pListener, this);
+		pm.registerEvents(pListener, this);
 		
 		// Setup external interface
 		PExChat.pexchat = this;
@@ -111,29 +116,30 @@ public class PExChat extends JavaPlugin {
 	}
 	
 	private void loadConfig() {
-		config.load();
-		censorChar = config.getString("censor-char", censorChar);
-		censorColored = config.getBoolean("censor-colored", censorColored);
-		censorColor = config.getString("censor-color", censorColor);
-		chatColor = config.getString("censor-string-color", chatColor);
-		censorWords = config.getStringList("censor-list", censorWords);
-		chatFormat = config.getString("message-format", chatFormat);
-        multigroupFormat = config.getString("multigroup-format", multigroupFormat);
-		dateFormat = config.getString("date-format", dateFormat);
-		meFormat = config.getString("me-format", meFormat);
-		List<String> tracknames = new ArrayList<String>();
-		tracknames = config.getKeys("tracks");
+		config = YamlConfiguration.loadConfiguration(configFile);
+		censorChar = config.getString("censor-char");
+		censorColored = config.getBoolean("censor-colored");
+		censorColor = config.getString("censor-color");
+		chatColor = config.getString("censor-string-color");
+		censorWords = config.getStringList("censor-list");
+		chatFormat = config.getString("message-format");
+        multigroupFormat = config.getString("multigroup-format");
+		dateFormat = config.getString("date-format");
+		meFormat = config.getString("me-format");
+		Set<String> tracknames = new HashSet<String>();
+	    tracknames = config.getConfigurationSection("tracks").getKeys(false);
+
 		if (tracknames != null){
 			for (String track : tracknames){
 				Track loadtrack = new Track();
-				loadtrack.groups = config.getStringList("tracks."+track+".groups", loadtrack.groups);
+				loadtrack.groups = config.getStringList("tracks."+track+".groups");
 				loadtrack.priority = config.getInt("tracks."+track+".priority", 0);
 				loadtrack.name = track;
 				tracks.add(loadtrack);
 			}
 		}
-		List<String> tmpaliases = new ArrayList<String>();
-		tmpaliases = config.getKeys("aliases");
+		Set<String> tmpaliases = new HashSet<String>();
+		tmpaliases = config.getConfigurationSection("aliases").getKeys(false);
 		if (tmpaliases != null){
 			for (String alias : tmpaliases){
 				aliases.put(alias, config.getString("aliases."+alias));
@@ -142,25 +148,30 @@ public class PExChat extends JavaPlugin {
 	}
 	
 	private void defaultConfig() {
-		config.setProperty("censor-char", censorChar);
-		config.setProperty("censor-colored", censorColored);
-		config.setProperty("censor-color", censorColor);
-		config.setProperty("censor-string-color", chatColor);
-		config.setProperty("censor-list", censorWords);
-		config.setProperty("message-format", chatFormat);
-        config.setProperty("multigroup-format", multigroupFormat);
-		config.setProperty("date-format", dateFormat);
-		config.setProperty("me-format", meFormat);
+		config = YamlConfiguration.loadConfiguration(configFile);
+		config.set("censor-char", censorChar);
+		config.set("censor-colored", censorColored);
+		config.set("censor-color", censorColor);
+		config.set("censor-string-color", chatColor);
+		config.set("censor-list", censorWords);
+		config.set("message-format", chatFormat);
+        config.set("multigroup-format", multigroupFormat);
+		config.set("date-format", dateFormat);
+		config.set("me-format", meFormat);
         HashMap<String, String> aliases = new HashMap<String, String>();
         aliases.put("Admin", "A");
         List<String> track = new ArrayList<String>();
         track.add("Admin");
         track.add("Moderator");
         track.add("Builder");
-        config.setProperty("tracks.default.groups", track);
-        config.setProperty("tracks.default.priority", 1);
-        config.setProperty("aliases", aliases);
-		config.save();
+        config.set("tracks.default.groups", track);
+        config.set("tracks.default.priority", 1);
+        config.set("aliases", aliases);
+		try {
+			config.save(configFile);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	/*

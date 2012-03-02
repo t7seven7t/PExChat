@@ -18,12 +18,14 @@ package com.Sleelin.PExChat;
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerChatEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
-import org.bukkit.event.player.PlayerListener;
 
-public class playerListener extends PlayerListener {
+public class playerListener implements Listener {
 	// Use this for permissions checking.
 	PExChat pexchat;
 	
@@ -31,7 +33,7 @@ public class playerListener extends PlayerListener {
 		this.pexchat = ichat;
 	}
 	
-	@Override
+	@EventHandler
 	public void onPlayerChat(PlayerChatEvent event) {
 		if (pexchat.permissions == null) return;
 		if (event.isCancelled()) return;
@@ -42,7 +44,7 @@ public class playerListener extends PlayerListener {
 	}
 	
 	// Use CommandPreprocess because that's what Justin said.
-	@Override
+	@EventHandler
 	public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event) {
 		if (pexchat.permissions == null) return;
 		if (event.isCancelled()) return;
@@ -53,13 +55,10 @@ public class playerListener extends PlayerListener {
 			String s = message.substring(message.indexOf(" ")).trim();
 			String formatted = pexchat.parseChat(p, s, pexchat.meFormat);
 			// Call custom event
-			PExChatMeEvent meEvent = new PExChatMeEvent(p, s);
-			pexchat.getServer().getPluginManager().callEvent(meEvent);
-			
-			pexchat.console.info(formatted);
-			for (Player t : pexchat.getServer().getOnlinePlayers()) {
-				t.sendMessage(formatted);
-			}
+			PExChatMeEvent meEvent = new PExChatMeEvent(p, formatted);
+			Bukkit.getServer().getPluginManager().callEvent(meEvent);
+			Bukkit.getServer().broadcastMessage(formatted);
+
 			event.setCancelled(true);
 		}
 	}
