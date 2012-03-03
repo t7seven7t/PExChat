@@ -1,6 +1,6 @@
 name: PExChat
 main: com.Sleelin.PExChat.PExChat
-version: 3.0.0
+version: 3.1.0
 depend: [PermissionsEx]
 dev-url: http://dev.bukkit.org/server-mods/pexchat/
 author: Sleelin
