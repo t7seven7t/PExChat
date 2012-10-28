@@ -21,8 +21,9 @@ package com.Sleelin.PExChat;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerChatEvent;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 
 public class playerListener implements Listener {
@@ -34,7 +35,7 @@ public class playerListener implements Listener {
 	}
 	
 	@EventHandler
-	public void onPlayerChat(PlayerChatEvent event) {
+	public void onPlayerChat(AsyncPlayerChatEvent event) {
 		if (pexchat.permissions == null) return;
 		if (event.isCancelled()) return;
 		Player p = event.getPlayer();
@@ -44,7 +45,7 @@ public class playerListener implements Listener {
 	}
 	
 	// Use CommandPreprocess because that's what Justin said.
-	@EventHandler
+	@EventHandler(priority = EventPriority.LOWEST)
 	public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event) {
 		if (pexchat.permissions == null) return;
 		if (event.isCancelled()) return;

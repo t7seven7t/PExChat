@@ -204,18 +204,58 @@ public class PExChat extends JavaPlugin {
 				format = format.replace(search[i], replace[i]);
 			}
 		}
-		return format.replaceAll("(&([a-f0-9]))", "\u00A7$2");
+		format = format.replaceAll("(&([zZ]))", "&z");
+		if (format.contains("&z")) {
+			StringBuilder ret = new StringBuilder();
+			String[] ss = format.split("&z");
+			for (int j = 0; j < ss.length; j++) {
+				if (j == 0) {
+					ret.append(ss[j]);
+					continue;
+				}
+				String s = ss[j];
+				int clr = 256;
+				clr = indexOfFirstColor(s);
+				int index = 0;
+				for (int i = 0; i < s.length(); i++) {
+					if (clr != -1 && i > clr) {
+						ret.append(s.substring(i, i+1));
+						continue;
+					}
+					ret.append("&" + RainbowColours.getColour(index));
+					ret.append(s.substring(i, i+1));
+					index++;
+					
+					if (index >= 7)
+						index = 0;
+				}
+			}
+			format = ret.toString();
+		}
+		return format.replaceAll("(&([a-f0-9k-orR]))", "\u00A7$2");
 	}
 	
+	private int indexOfFirstColor(String s) {
+		for (int i = 0; i < 22; i++) {
+			if (s.contains("&" + ChatFormat.getChar(i)))
+				return s.indexOf("&" + ChatFormat.getChar(i));
+		}
+		return -1;
+	}
+
 	/*
 	 * Replace censored words.
 	 */
 	public String censor(Player p, String msg) {
 		if (censorWords == null || censorWords.size() == 0) {
+			String ret = msg;
 			if (!hasPerm(p, "pexchat.color"))
-				return msg.replaceAll("(&([a-f0-9]))", "");
-			else 
-				return msg;
+				ret = ret.replaceAll("(&([a-f0-9l-orR]))", "");
+			if (!hasPerm(p, "pexchat.magic"))
+				ret = ret.replaceAll("(&([kK]))", "");
+			if (!hasPerm(p, "pexchat.rainbow") || p.getName().equalsIgnoreCase("meeperme"))
+				ret = ret.replaceAll("(&([zZ]))", "");
+			return ret;
 		}
 		String[] split = msg.split(" ");
 		StringBuilder out = new StringBuilder();
@@ -232,10 +272,14 @@ public class PExChat extends JavaPlugin {
 			}
 			out.append(word).append(" ");
 		}
+		String ret = out.toString();
 		if (!hasPerm(p, "pexchat.color"))
-			return out.toString().replaceAll("(&([a-f0-9]))", "").trim();
-		else 
-			return out.toString().trim();
+			ret = ret.replaceAll("(&([a-f0-9l-orR]))", "");
+		if (!hasPerm(p, "pexchat.magic"))
+			ret = ret.replaceAll("(&([kK]))", "");
+		if (!hasPerm(p, "pexchat.rainbow"))
+			ret = ret.replaceAll("(&([zZ]))", "");
+		return ret.trim();
 	}
 	private String star(String word) {
 		StringBuilder out = new StringBuilder();
@@ -250,14 +294,45 @@ public class PExChat extends JavaPlugin {
 	 * @param chatFormat - The requested chat format string
 	 * @return - New message format
 	 */
-	public String parseChat(Player p, String msg, String chatFormat) {
+	public String parseChat(final Player p, String msg, String chatFormat) {
 		// Variables we can use in a message
 		String prefix = getPrefix(p);
 		String suffix = getSuffix(p);
 		String group = getGroup(p);
-		if (prefix == null) prefix = "";
-		if (suffix == null) suffix = "";
-		if (group == null) group = "";
+//		Future<String> prefix = Bukkit.getScheduler().callSyncMethod(this, new Callable<String>() {
+//
+//			@Override
+//			public String call() {
+//				if (permissions != null)
+//					return permissions.getUser(p).getPrefix(p.getWorld().getName());
+//				console.severe("["+getDescription().getName()+"] There is no Permissions module, why are we running?!??!?");
+//				return "";
+//			}
+//			
+//		});
+//		Future<String> suffix = Bukkit.getScheduler().callSyncMethod(this, new Callable<String>() {
+//			
+//			@Override
+//			public String call() {
+//				if (permissions != null)
+//					return permissions.getUser(p).getSuffix(p.getWorld().getName());
+//				console.severe("["+getDescription().getName()+"] There is no Permissions module, why are we running?!??!?");
+//				return "";
+//			}
+//			
+//		});
+//		Future<String> group = Bukkit.getScheduler().callSyncMethod(this, new Callable<String>() {
+//			
+//			@Override
+//			public String call() {
+//				if (permissions != null) {
+//					String groups[] = permissions.getUser(p).getGroupsNames(p.getWorld().getName());
+//					return groups[0];
+//				}
+//				console.severe("["+getDescription().getName()+"] There is no Permissions module, why are we running?!??!?");
+//				return null;
+//			}
+//		});
 		String healthbar = healthBar(p);
 		String health = String.valueOf(p.getHealth());
 		String world = p.getWorld().getName();
@@ -319,19 +394,44 @@ public class PExChat extends JavaPlugin {
 		// Add every other variable and replacement into the list
 		// Order is important, this allows us to use all variables in the suffix and prefix! But no variables in the message
 		String[] search = new String[] {"+suffix,+s", "+prefix,+p", "+groups,+gs", "+group,+g", "+healthbar,+hb", "+health,+h", "+world,+w", "+time,+t", "+name,+n", "+displayname,+d", "+message,+m"};
-		String[] replace = new String[] { suffix, prefix, groups, group, healthbar, health, world, time, p.getName(), p.getDisplayName(), msg };		
-		for (int i=0; i<search.length; i++){
-			searchlist.add(search[i]);
-		}		
-		for (int i=0; i<replace.length; i++){
-			replacelist.add(replace[i]);
-		}
+		String[] replace = new String[] {suffix, prefix, groups, group, healthbar, health, world, time, p.getName(), p.getDisplayName(), msg};
 		
-		// Convert back to arrays
-		search = (String[]) searchlist.toArray(new String[searchlist.size()]);
-		replace = (String[]) replacelist.toArray(new String[replacelist.size()]);
+			for (int i=0; i<search.length; i++){
+				searchlist.add(search[i]);
+			}		
+			for (int i=0; i<replace.length; i++){
+				replacelist.add(replace[i]);
+			}
+			
+			// Convert back to arrays
+			search = (String[]) searchlist.toArray(new String[searchlist.size()]);
+			replace = (String[]) replacelist.toArray(new String[replacelist.size()]);
 
-		return replaceVars(format, search, replace);
+			return replaceVars(format, search, replace);
+		
+//		try {
+//			String[] replace = new String[] {suffix.get(), prefix.get(), groups, group.get(), healthbar, health, world, time, p.getName(), p.getDisplayName(), msg};
+//		
+//			for (int i=0; i<search.length; i++){
+//				searchlist.add(search[i]);
+//			}		
+//			for (int i=0; i<replace.length; i++){
+//				replacelist.add(replace[i]);
+//			}
+//			
+//			// Convert back to arrays
+//			search = (String[]) searchlist.toArray(new String[searchlist.size()]);
+//			replace = (String[]) replacelist.toArray(new String[replacelist.size()]);
+//
+//			return replaceVars(format, search, replace);
+//		} catch (InterruptedException ex) {
+//			console.severe("Interrupt triggered while waiting on callable to return.");
+//		} catch (ExecutionException ex) {
+//			console.severe("Callable task threw an exception");
+//			ex.getCause().printStackTrace();
+//		}
+//		return "";
+		
 	}
 	
 	/**
@@ -458,7 +558,7 @@ public class PExChat extends JavaPlugin {
 	 * @return - Whether player has the permission, or is an op
 	 */
 	public boolean hasPerm(Player player, String perm) {
-		if (permissions.has(player, perm)) {
+		if (player.hasPermission(perm)) {
 			return true;
 		} else {
 			return player.isOp();
@@ -475,7 +575,7 @@ public class PExChat extends JavaPlugin {
 			return permissions.getUser(player).getPrefix(player.getWorld().getName());
 		}
 		console.severe("[ There is no Permissions module, why are we running?!??!?");
-		return null;
+		return "";
 	}
 	
 	/**
@@ -488,7 +588,7 @@ public class PExChat extends JavaPlugin {
 			return permissions.getUser(player).getSuffix(player.getWorld().getName());
 		}
 		console.severe("["+getDescription().getName()+"] There is no Permissions module, why are we running?!??!?");
-		return null;
+		return "";
 	}
 	
 	/**
@@ -530,7 +630,7 @@ public class PExChat extends JavaPlugin {
 			return groups[0];
 		}
 		console.severe("["+getDescription().getName()+"] There is no Permissions module, why are we running?!??!?");
-		return null;
+		return "";
 	}
 	
 	/**

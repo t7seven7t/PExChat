@@ -1,0 +1,11 @@
+name: PExChat
+main: com.Sleelin.PExChat.PExChat
+version: 3.1.0
+depend: [PermissionsEx]
+dev-url: http://dev.bukkit.org/server-mods/pexchat/
+author: Sleelin
+description: Based on Drakia's iChat, this version adds support for multiple groups, as well as PermissionsEx.
+commands:
+  pexchat:
+    description: Used to reload the plugin.
+    usage: /<command> reload - Used to reload the plugin.
